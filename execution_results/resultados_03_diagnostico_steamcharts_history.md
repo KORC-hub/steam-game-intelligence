@@ -1,7 +1,7 @@
 # Resultados del diagn?stico ? 03_diagnostico_steamcharts_history
 
 - **Notebook:** `03_diagnostico_steamcharts_history`
-- **Ejecutado:** `2026-10-18T22:00:51.532964+00:00` (zona horaria del driver)
+- **Ejecutado:** `2026-10-18T22:15:24.839141+00:00` (zona horaria del driver)
 - **Estado:** `completed`
 - **Objetivo:** conservar los resultados efectivos de las validaciones SQL del notebook para su revisi?n local.
 

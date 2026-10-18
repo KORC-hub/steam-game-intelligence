@@ -1,7 +1,7 @@
 # Resultados del diagn?stico ? 04_diagnostico_twitch_top200
 
 - **Notebook:** `04_diagnostico_twitch_top200`
-- **Ejecutado:** `2026-10-18T22:01:29.740168+00:00` (zona horaria del driver)
+- **Ejecutado:** `2026-10-18T22:16:00.287339+00:00` (zona horaria del driver)
 - **Estado:** `completed`
 - **Objetivo:** conservar los resultados efectivos de las validaciones SQL del notebook para su revisi?n local.
 
