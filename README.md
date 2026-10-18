@@ -24,7 +24,7 @@ causales.
   Kaggle.
 - Notebooks de ingesta para las fuentes de SteamCharts, Steam Games y Twitch.
 - Cuatro notebooks de diagnóstico en
-  [`src/transformation/diagnosticos/`](./src/transformation/diagnosticos/).
+  [`notebooks/data_validations/`](./notebooks/data_validations/).
 - Diagnósticos SQL para volumen, cobertura, nulos, duplicados, formatos,
   rangos, métricas inconsistentes, variaciones entre snapshots y muestras de
   registros problemáticos.
@@ -107,10 +107,10 @@ de Unity Catalog:
 
 Los notebooks actuales son:
 
-- [`01_diagnostico_steam_games.ipynb`](./src/transformation/diagnosticos/01_diagnostico_steam_games.ipynb)
-- [`02_diagnostico_steam_games_review.ipynb`](./src/transformation/diagnosticos/02_diagnostico_steam_games_review.ipynb)
-- [`03_diagnostico_steamcharts_history.ipynb`](./src/transformation/diagnosticos/03_diagnostico_steamcharts_history.ipynb)
-- [`04_diagnostico_twitch_top200.ipynb`](./src/transformation/diagnosticos/04_diagnostico_twitch_top200.ipynb)
+- [`01_diagnostico_steam_games.ipynb`](./notebooks/data_validations/01_diagnostico_steam_games.ipynb)
+- [`02_diagnostico_steam_games_review.ipynb`](./notebooks/data_validations/02_diagnostico_steam_games_review.ipynb)
+- [`03_diagnostico_steamcharts_history.ipynb`](./notebooks/data_validations/03_diagnostico_steamcharts_history.ipynb)
+- [`04_diagnostico_twitch_top200.ipynb`](./notebooks/data_validations/04_diagnostico_twitch_top200.ipynb)
 
 Estos notebooks consultan Bronze sin modificarlo. Sus resultados sirven para
 conocer la calidad y la forma real de los datos antes de fijar las reglas de
