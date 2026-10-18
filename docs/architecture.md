@@ -5,7 +5,7 @@
 Construir un pipeline reproducible e idempotente para analizar la evolución de
 juegos en Steam y su asociación temporal con la exposición en Twitch. Bronze no
 se reingesta durante el flujo normal: el pipeline lee las tablas existentes y
-produce Silver, DQL y Gold.
+produce Silver, DLQ y Gold.
 
 ## Flujo lógico
 
@@ -17,12 +17,12 @@ Bronze existente
 01_bronze_gate
     | contrato, perfilado, conteo en seco y audit
     v
-02_silver_dql
-    | staging tipado -> reglas de clave -> deduplicación -> reglas de negocio
+silver_orquestator
+    | schemas -> transformaciones SQL por tabla
     +----------------------+
     |                      |
     v                      v
-Silver validado          DQL rechazados
+Silver validado          DLQ rechazados
     |
     v
 03_gold
@@ -31,14 +31,15 @@ Silver validado          DQL rechazados
 Gold analítico
 ```
 
-El coordinador `00_orchestrator` ejecuta los pasos de forma secuencial:
+El coordinador `src/silver_orquestator` ejecuta los pasos de forma secuencial:
 
 ```text
-bronze_gate -> silver_dql -> gold
+crear_schemas -> games -> player_counts_monthly -> twitch_activity_monthly
 ```
 
-La Fase 1 implementa solamente `bronze_gate`. Los notebooks de Silver y Gold se
-construyen después de completar la compuerta D1–D12.
+El orquestador calcula el corte y ejecuta los notebooks de
+`src/transformaciones/`. Gold queda fuera de esta entrega y debe consumir
+únicamente las tablas Silver validadas.
 
 ## Capas y responsabilidades
 
@@ -51,17 +52,9 @@ Twitch son cargas únicas según el plan.
 
 ### Bronze gate y audit
 
-`01_bronze_gate`:
-
-1. Comprueba existencia, contenido, columnas y tipos esperados.
-2. Calcula un único cutoff por tabla a partir de `_ingested_at`.
-3. Perfila volumen, lotes, formatos, ceros, cruces y reglas candidatas.
-4. Persiste las mediciones en `audit`.
-5. Devuelve un reporte compacto y falla si el contrato tiene un `FAIL`.
-
-Una sonda que falle debe registrar el error y continuar con las demás sondas.
-Esto permite distinguir un problema de datos de un problema de la consulta de
-perfilado.
+El orquestador no ejecuta la ingesta Bronze. Comprueba `run_ingestion=false`,
+crea los esquemas de salida si faltan, calcula un único `cutoff_us` y pasa
+todos los parámetros como strings a los notebooks Silver/DLQ.
 
 ### Silver
 
@@ -76,9 +69,9 @@ El alcance acordado es:
 Silver estandariza nombres, tipos y fechas; normaliza nombres para el matching;
 aplica reglas de clave y negocio; y conserva solamente filas aprobadas.
 
-### DQL
+### DLQ
 
-DQL es un esquema independiente. Cada tabla Silver tiene una tabla de
+DLQ es un esquema independiente. Cada tabla Silver tiene una tabla de
 rechazados correspondiente. Un registro rechazado se conserva una sola vez por
 `_reject_key` y contiene:
 
@@ -110,25 +103,23 @@ La idempotencia se basa en:
 1. cutoff único por corrida;
 2. `_row_hash` determinista, excluyendo metadatos de procesamiento;
 3. `MERGE` en Silver por clave de negocio;
-4. `MERGE` en DQL por `_reject_key`;
-5. `WHEN NOT MATCHED BY SOURCE THEN DELETE` para reflejar el estado validado
-   del cutoff;
-6. `INSERT OVERWRITE` para Gold;
-7. contabilidad de filas antes y después de escribir.
+4. `CREATE OR REPLACE TABLE` en Silver y DLQ para reconstruir de forma
+   determinista el estado completo visible hasta el cutoff;
+5. `INSERT OVERWRITE` para Gold;
+6. contabilidad de filas antes y después de escribir.
 
 La prueba de aceptación debe demostrar que dos ejecuciones con el mismo cutoff:
 
 - no duplican Silver;
-- no duplican DQL;
+- no duplican DLQ;
 - no duplican Gold;
 - reflejan una actualización de Bronze correctamente;
 - producen las mismas métricas de perfilado.
 
 ## Parametrización
 
-El catálogo y los esquemas (`bronze`, `silver`, `dql`, `gold`, `audit`) deben
+El catálogo y los esquemas (`bronze`, `silver`, `dlq`, `gold`, `audit`) deben
 recibirse por widgets/configuración. No se deben dispersar nombres de tres
 niveles dentro de SQL fijo cuando el nombre depende del entorno.
 
-Los notebooks coordinados reciben todos los argumentos como strings. Los hijos
-no calculan otro cutoff: usan el `cutoff_json` recibido del coordinador.
+Los notebooks coordinados reciben todos los argumentos como strings. Los hijos no calculan otro cutoff: usan el `cutoff_us` recibido del orquestador.

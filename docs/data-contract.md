@@ -38,23 +38,23 @@ descriptivas, reviews, actividad y disponibilidad. Se descartan de Silver
 campos descriptivos pesados que no usa Gold, según la sección 9.1 de
 [PLAN.md](../PLAN.md).
 
-Transformaciones que requieren decisión:
+Transformaciones implementadas:
 
-- parsing de `estimated_owners` (D10);
-- separador de `genres`, `categories` y `tags` (D3);
-- semántica de cero en puntuaciones (D4);
-- elección de tipos para valores `double` que conceptualmente son enteros.
+- `estimated_owners` se separa en `owners_min` y `owners_max`;
+- `genres`, `categories` y `tags` se interpretan como arrays de strings;
+- los ceros de puntuaciones se conservan como valores válidos;
+- los contadores se convierten con tipos enteros/decimales seguros.
 
 ### `steamcharts_2025_history_data` -> `silver.player_counts_monthly`
 
-Se espera producir:
+Se produce:
 
 - `app_id` desde `steam_appid`;
-- `month_start` como fecha del primer día del mes;
+- `month_raw`, `month_start`, `year`, `month` y `day`;
 - `avg_players`, `peak_players`;
-- `gain` y `gain_percent`, sujetos a D1 y D2;
-- `name` y `name_norm`;
-- `in_catalog`, sujeto a D5.
+- `gain` y `gain_percent` como decimales;
+- `name` y `name_normalized`;
+- `in_catalog`, sin rechazar huérfanos.
 
 ### `twitch_top_200_games_data` -> `silver.twitch_activity_monthly`
 
@@ -67,14 +67,14 @@ Se espera estandarizar:
 - `game_name_norm` para el matching posterior;
 - métricas de audiencia y emisión a nombres snake_case.
 
-La ausencia de correspondencia con Steam no es un rechazo DQL de Twitch. El top
+La ausencia de correspondencia con Steam no es un rechazo DLQ de Twitch. El top
 200 puede incluir categorías o juegos que no existan en Steam; esa diferencia se
 resuelve con columnas de matching en Gold.
 
 ## Convenciones de conversión
 
 Sobre Bronze se deben usar `try_cast`, `try_to_date` y `try_divide`. Una
-conversión que no pueda realizarse debe producir una señal que pueda ir a DQL,
+conversión que no pueda realizarse debe producir una señal que pueda ir a DLQ,
 no tumbar silenciosamente el Job ni inventar un valor.
 
 Los hashes de comparación no incluyen `_ingested_at`, `_source`, `_processed_at`

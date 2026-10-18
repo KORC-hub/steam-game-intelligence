@@ -25,27 +25,41 @@ causales.
 - Notebooks de ingesta para las fuentes de SteamCharts, Steam Games y Twitch.
 - Cuatro notebooks de diagnóstico en
   [`notebooks/data_validations/`](./notebooks/data_validations/).
+- La carpeta [`notebooks/`](./notebooks/) contiene notebooks de consulta,
+  validación y exportación de resultados; no escribe las tablas Silver.
+- Notebook de transformación
+  [`src/transformaciones/`](./src/transformaciones) para construir las tres
+  tablas Silver y sus tablas DLQ.
+- Orquestador
+  [`src/silver_orquestator.ipynb`](./src/silver_orquestator.ipynb) con corte
+  único de Bronze y parámetros compatibles con un Job.
 - Diagnósticos SQL para volumen, cobertura, nulos, duplicados, formatos,
   rangos, métricas inconsistentes, variaciones entre snapshots y muestras de
   registros problemáticos.
 - Documentación técnica de arquitectura, contrato de datos y validaciones
-  Silver/DQL en [`docs/`](./docs/).
+  Silver/DLQ en [`docs/`](./docs/).
+
+### Implementado como código, pendiente de ejecución
+
+- Flujo `Bronze → Silver → DLQ` mediante notebooks coordinados.
+- Estandarización de nombres, tipos, listas y fechas en Silver.
+- Validaciones de calidad aplicadas durante el procesamiento.
+- Separación de filas aprobadas en Silver y filas rechazadas en DLQ.
+- Escrituras Delta repetibles mediante `CREATE OR REPLACE TABLE` sobre el
+  estado completo de las fuentes actuales.
+- Esquemas y tablas creados dinámicamente a partir de parámetros de ejecución.
+
+La ejecución real de estos notebooks todavía debe verificarse en Databricks.
+El repositorio contiene el código, pero no afirma que las tablas ya existan en
+el workspace.
 
 ### En diseño
 
-- Flujo Medallion `Bronze → Silver → DQL → Gold`.
-- Estandarización de nombres, tipos y fechas en Silver.
-- Validaciones de calidad aplicadas durante el procesamiento.
-- Separación de filas aprobadas en Silver y filas rechazadas en DQL.
-- Orquestación mediante notebooks coordinados y un Databricks Job.
-- Escrituras idempotentes para evitar duplicados y mantener el estado de las
-  tablas según la fuente.
 - Tablas Gold para crecimiento de jugadores, relación Twitch–Steam y una
   dimensión o métrica de estado del juego.
 
-Las tablas Silver, DQL y Gold, el pipeline completo y las pruebas de
-idempotencia todavía requieren ejecución y validación en Databricks. No se
-presentan como resultados terminados mientras no exista evidencia de ejecución.
+Gold, el Job y las pruebas formales de idempotencia todavía requieren
+implementación o validación en Databricks.
 
 ## Fuentes de datos
 
@@ -54,7 +68,7 @@ presentan como resultados terminados mientras no exista evidencia de ejecución.
 | Steam Games | `steam_games` | Append de snapshots | Catálogo y atributos de juegos |
 | Steam Games Reviews | `steam_games_review` | Append de snapshots | Reviews en una estructura string aún no definida |
 | SteamCharts | `steamcharts_2025_history_data` | Carga única | Histórico mensual de jugadores, 2012–2025 |
-| Twitch Top 200 | `twitch_top_200_games_data` | Carga única | Actividad mensual, 2016–2023 |
+| Twitch Top 200 | `twitch_top_200_games_data` | Carga única | Actividad mensual, 2016–2024 |
 
 Las tablas Bronze reales son las indicadas arriba. Algunos nombres antiguos que
 aparecen en documentación previa (`steam_reviews`,
@@ -84,7 +98,7 @@ Bronze existente
 Diagnóstico y contrato de Bronze
         |
         v
-Silver validado ---------> DQL: filas rechazadas
+Silver validado ---------> DLQ: filas rechazadas
         |
         v
 Gold analítico
@@ -114,7 +128,7 @@ Los notebooks actuales son:
 
 Estos notebooks consultan Bronze sin modificarlo. Sus resultados sirven para
 conocer la calidad y la forma real de los datos antes de fijar las reglas de
-Silver y DQL.
+Silver y DLQ.
 
 ### Silver
 
@@ -127,18 +141,25 @@ El alcance previsto contempla tres tablas principales:
 | `silver.twitch_activity_monthly` | Actividad de Twitch por mes y posición del ranking |
 
 Silver debe contener únicamente registros que hayan pasado las validaciones y
-la deduplicación determinista.
+la deduplicación determinista. La implementación conserva una fila vigente
+por juego en `games`, una fila por juego y mes en `player_counts_monthly` y
+una fila por mes y posición en `twitch_activity_monthly`.
 
-### DQL
+Las transformaciones que escriben tablas viven en
+[`src/transformaciones/`](./src/transformaciones/). Cada notebook contiene una
+sección SQL para Silver y otra para DLQ.
 
-DQL es una capa independiente para conservar registros rechazados durante el
+### DLQ
+
+DLQ es una capa independiente para conservar registros rechazados durante el
 procesamiento de Silver. Cada rechazo debe incluir un `motivo_rechazo` y la
 trazabilidad necesaria para identificar la regla incumplida y la fila de
 origen.
 
-Las validaciones consideradas incluyen claves inválidas, fechas no parseables,
-valores negativos, rangos imposibles, nombres vacíos y duplicados conflictivos.
-La selección final de reglas depende de la evidencia obtenida del diagnóstico.
+Las validaciones implementadas incluyen claves inválidas, fechas no parseables,
+valores negativos, rangos imposibles, nombres vacíos, conversiones de `gain` y
+duplicados conflictivos. Los rechazos conservan `motivo_rechazo`, reglas,
+payload y metadatos de corrida.
 
 ### Gold
 
@@ -169,7 +190,7 @@ steam_game_intelligence
 │   ├── games
 │   ├── player_counts_monthly
 │   └── twitch_activity_monthly
-├── dql
+├── dlq
 │   ├── games_rejected
 │   ├── player_counts_monthly_rejected
 │   └── twitch_activity_monthly_rejected
@@ -201,19 +222,16 @@ La descripción detallada se encuentra en:
   dependencias e idempotencia.
 - [`docs/data-contract.md`](./docs/data-contract.md): fuentes, granularidad,
   campos relevantes y transformaciones previstas.
-- [`docs/silver-dql-validations.md`](./docs/silver-dql-validations.md):
-  validaciones candidatas, deduplicación, estructura DQL y contabilidad.
+- [`docs/silver-dlq-validations.md`](./docs/silver-dlq-validations.md):
+  validaciones, deduplicación, estructura DLQ y contabilidad.
 
 ## Próximos pasos
 
-1. Ejecutar los diagnósticos en Databricks y conservar sus resultados.
-2. Confirmar los formatos, tipos, nulos, duplicados y cruces entre fuentes.
-3. Definir las reglas definitivas de rechazo para cada tabla Silver.
-4. Implementar Silver y DQL con trazabilidad e idempotencia.
-5. Construir Gold únicamente desde Silver.
-6. Orquestar el flujo completo mediante un Job.
-7. Ejecutar pruebas repetidas que demuestren que Silver, DQL y Gold no generan
+1. Ejecutar el orquestador en Databricks y verificar la creación de Silver/DLQ.
+2. Construir Gold únicamente desde Silver.
+3. Configurar el flujo completo mediante un Job sin activar la ingesta Bronze.
+4. Ejecutar pruebas repetidas que demuestren que Silver, DLQ y Gold no generan
    duplicados y reflejan las actualizaciones de Bronze.
 
 Hasta completar esos pasos, las tablas y métricas de las capas posteriores
-deben considerarse diseño previsto, no resultados publicados.
+deben considerarse código preparado, no resultados publicados.

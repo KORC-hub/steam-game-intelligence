@@ -1,15 +1,12 @@
-# Validaciones Silver y DQL
+# Validaciones Silver y DLQ
 
 ## Principio
 
-Las validaciones se aplican en línea durante `02_silver_dql`. Una fila que
-incumple una regla no entra a Silver y se escribe en DQL con un motivo
-explícito. El perfilado de los notebooks de diagnóstico es solamente
-observacional: sus conteos no son todavía reglas definitivas.
-
-Las reglas de esta página son candidatas tomadas de la sección 6.4 de
-[PLAN.md](../PLAN.md). D1–D12 deben completarse antes de implementarlas como
-contrato definitivo.
+Las validaciones se aplican en línea durante `03_transformaciones`. Una fila que
+incumple una regla no entra a Silver y se escribe en DLQ con un motivo
+explícito. El perfilado de los notebooks de diagnóstico fue la evidencia para fijar el
+contrato. Las reglas de esta página están implementadas en
+[`notebooks/silver/03_transformaciones.ipynb`](../notebooks/silver/03_transformaciones.ipynb).
 
 ## Orden de procesamiento
 
@@ -18,18 +15,18 @@ Para cada tabla:
 1. leer Bronze hasta el cutoff;
 2. estandarizar nombres y tipos con `try_*`;
 3. evaluar reglas de clave;
-4. separar claves inválidas a DQL;
+4. separar claves inválidas a DLQ;
 5. deduplicar determinísticamente las filas que pasaron las claves;
 6. marcar las filas superseded como deduplicadas, no como rechazadas;
 7. evaluar reglas de negocio en una sola pasada;
-8. escribir Silver y DQL de forma idempotente;
+8. escribir Silver y DLQ de forma idempotente;
 9. verificar la contabilidad.
 
 El orden entre tablas es `games` -> `player_counts_monthly` ->
 `twitch_activity_monthly`. Esto permite que una política futura de huérfanos
 dependa del catálogo de juegos sin invertir el flujo.
 
-## Reglas candidatas
+## Reglas implementadas
 
 ### `silver.games`
 
@@ -39,10 +36,11 @@ dependa del catálogo de juegos sin invertir el flujo.
 | `name_vacio` | rule | `name IS NULL OR trim(name) = ''` | impide identificar y relacionar el juego |
 | `price_negativo` | rule | `price < 0` | un precio negativo no representa una métrica válida |
 | `conteo_negativo` | rule | `positive < 0 OR negative < 0 OR peak_ccu < 0` | métricas de actividad o reviews negativas son inconsistentes |
+| `release_date_invalida` | rule | fecha informada que no puede convertirse | protege la dimensión temporal; Bronze ya declara esta columna como `date` |
+| `estimated_owners_invalido` | rule | rango informado sin extremos numéricos | evita publicar un rango de propietarios ilegible |
 
-`release_date` futura se perfila, pero no es rechazo por defecto: puede
-representar un juego anunciado o no lanzado. El valor cero de puntuaciones
-tampoco se rechaza hasta resolver D4.
+`release_date` futura no se rechaza. El valor cero de puntuaciones se conserva
+como válido.
 
 ### `silver.player_counts_monthly`
 
@@ -53,8 +51,7 @@ tampoco se rechaza hasta resolver D4.
 | `jugadores_negativos` | rule | `avg_players < 0 OR peak_players < 0` | los conteos no pueden ser negativos |
 | `avg_mayor_que_peak` | rule | `avg_players > peak_players` | el promedio mensual no puede superar el máximo mensual |
 
-`app_no_en_catalogo` depende de D5. Si los huérfanos son pocos, puede ser
-rechazo; si son muchos, la fila puede conservarse con `in_catalog = false`.
+Los huérfanos se conservan con `in_catalog = false`; no son rechazo DLQ.
 
 ### `silver.twitch_activity_monthly`
 
@@ -66,9 +63,9 @@ rechazo; si son muchos, la fila puede conservarse con `in_catalog = false`.
 | `metrica_negativa` | rule | cualquier métrica de audiencia/emisión `< 0` | las métricas negativas son inconsistentes |
 | `duplicado_rank_mes` | rule | más de una fila por `(month_start, twitch_rank)` | el grano Silver exige un rank único por mes |
 
-Para `duplicado_rank_mes`, se conserva la fila con mayor `hours_watched`; el
-desempate es por `game` según el plan. Esta regla necesita una ventana
-determinista y no debe rechazar Twitch únicamente por no hacer match con Steam.
+Para duplicados Twitch por `(month_start, twitch_rank)`, se conserva la fila
+con mayor `hours_watched`; el desempate es por `game_normalized` y luego
+`_ingested_at`. No se rechaza Twitch únicamente por no hacer match con Steam.
 
 ## Deduplificación
 
@@ -80,12 +77,12 @@ ORDER BY _ingested_at DESC, _row_hash DESC
 ```
 
 La fila con `rn = 1` es la vigente. Las filas con `rn > 1` son superseded:
-no se consideran DQL porque son snapshots anteriores, no necesariamente datos
+no se consideran DLQ porque son snapshots anteriores, no necesariamente datos
 inválidos.
 
-## Motivos y estructura DQL
+## Motivos y estructura DLQ
 
-Si una fila viola varias reglas, se crea un solo registro DQL:
+Si una fila viola varias reglas, se crea un solo registro DLQ:
 
 - `motivo_rechazo`: reglas unidas con `; `;
 - `reglas_violadas`: array de nombres de regla;
@@ -96,7 +93,7 @@ Si una fila viola varias reglas, se crea un solo registro DQL:
 
 La clave `_reject_key` permite hacer `MERGE` y evita duplicar un rechazo al
 reprocesar el mismo cutoff. `WHEN NOT MATCHED BY SOURCE THEN DELETE` mantiene
-DQL alineado con el estado rechazado de la fuente al cutoff actual.
+DLQ alineado con el estado rechazado de la fuente al cutoff actual.
 
 ## Contabilidad obligatoria
 
@@ -110,7 +107,7 @@ Después de escribir:
 
 ```text
 COUNT(Silver) = n_silver
-COUNT(DQL) + n_exact_dups_collapsed = n_key_rej + n_rule_rej
+COUNT(DLQ) + n_exact_dups_collapsed = n_key_rej + n_rule_rej
 ```
 
 Si la contabilidad no cuadra, el notebook debe fallar explícitamente. No se
