@@ -1,7 +1,7 @@
 # Resultados del diagn?stico ? 03_diagnostico_steamcharts_history
 
 - **Notebook:** `03_diagnostico_steamcharts_history`
-- **Ejecutado:** `2026-10-18T20:37:08.241252+00:00` (zona horaria del driver)
+- **Ejecutado:** `2026-10-18T22:00:51.532964+00:00` (zona horaria del driver)
 - **Estado:** `completed`
 - **Objetivo:** conservar los resultados efectivos de las validaciones SQL del notebook para su revisi?n local.
 
@@ -409,6 +409,13 @@ _Filas exportadas: 200; m?ximo aplicado: 200._
 | Jul-22 | 61.4 | 3.01 | 0.0516 | 122 | Team Fortress Classic | 20 | 2026-09-16 18:46:47.007169 | https://www.kaggle.com/datasets/lunthu/steam-monthly-average-players |
 | Jun-22 | 58.38 | 4.65 | 0.08650000000000001 | 125 | Team Fortress Classic | 20 | 2026-09-16 18:46:47.007169 | https://www.kaggle.com/datasets/lunthu/steam-monthly-average-players |
 | May-22 | 53.73 | -4.17 | -0.07200000000000001 | 113 | Team Fortress Classic | 20 | 2026-09-16 18:46:47.007169 | https://www.kaggle.com/datasets/lunthu/steam-monthly-average-players |
+
+### Muestra de estructura (una fila)
+_Filas exportadas: 1; m?ximo aplicado: 200._
+
+| month | avg_players | gain | gain_percent | peak_players | name | steam_appid | _ingested_at | _source |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Sep-25 | 7805.25 | 883.12 | 0.1276 | 13254 | Counter-Strike | 10 | 2026-09-16 18:46:47.007169 | https://www.kaggle.com/datasets/lunthu/steam-monthly-average-players |
 
 ## Hallazgos y conclusiones
 Los hallazgos deben interpretarse a partir de los conteos y muestras exportados; esta celda no inventa conclusiones ni marca como aprobada una validaci?n no ejecutada.

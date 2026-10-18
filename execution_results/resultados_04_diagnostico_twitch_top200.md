@@ -1,7 +1,7 @@
 # Resultados del diagn?stico ? 04_diagnostico_twitch_top200
 
 - **Notebook:** `04_diagnostico_twitch_top200`
-- **Ejecutado:** `2026-10-18T20:38:07.263626+00:00` (zona horaria del driver)
+- **Ejecutado:** `2026-10-18T22:01:29.740168+00:00` (zona horaria del driver)
 - **Estado:** `completed`
 - **Objetivo:** conservar los resultados efectivos de las validaciones SQL del notebook para su revisi?n local.
 
@@ -376,6 +376,13 @@ _Filas exportadas: 105; m?ximo aplicado: 200._
 | 2024 | 7 | 200 | 200 | 1 | 200 |
 | 2024 | 8 | 200 | 200 | 1 | 200 |
 | 2024 | 9 | 200 | 200 | 1 | 200 |
+
+### Muestra de estructura (una fila)
+_Filas exportadas: 1; m?ximo aplicado: 200._
+
+| Rank | Game | Month | Year | Hours_watched | Hours_streamed | Peak_viewers | Peak_channels | Streamers | Avg_viewers | Avg_channels | Avg_viewer_ratio | _ingested_at | _source |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | League of Legends | 1 | 2016 | 94377226 | 1362044 | 530270 | 2903 | 129172 | 127021 | 1833 | 69.29 | 2026-09-16 18:47:15.962265 | https://www.kaggle.com/datasets/rankirsh/evolution-of-top-games-on-twitch |
 
 ## Hallazgos y conclusiones
 Los hallazgos deben interpretarse a partir de los conteos y muestras exportados; esta celda no inventa conclusiones ni marca como aprobada una validaci?n no ejecutada.
