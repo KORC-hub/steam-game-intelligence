@@ -238,6 +238,9 @@ La descripción detallada se encuentra en:
   campos relevantes y transformaciones previstas.
 - [`docs/silver-dlq-validations.md`](./docs/silver-dlq-validations.md):
   validaciones, deduplicación, estructura DLQ y contabilidad.
+- [`docs/idempotency-testing.md`](./docs/idempotency-testing.md): procedimiento
+  de aislamiento, ejecuciones repetidas y criterios de aceptación de
+  idempotencia.
 
 ## Próximos pasos
 
