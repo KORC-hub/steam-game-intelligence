@@ -251,3 +251,79 @@ La descripción detallada se encuentra en:
 
 Hasta completar esos pasos, las tablas y métricas de las capas posteriores
 deben considerarse código preparado, no resultados publicados.
+
+## Conclusiones del análisis Gold
+
+Estas conclusiones corresponden a una ejecución de
+[`notebooks/gold_analysis.ipynb`](./notebooks/gold_analysis.ipynb) generada el
+19 de octubre de 2026 en UTC. Describen asociaciones observadas en los datos;
+no demuestran que la exposición en Twitch cause cambios en los jugadores de
+Steam.
+
+### Cobertura analítica
+
+- `gold.game_growth` contiene 605.537 observaciones de 6.693 juegos entre
+  agosto de 2012 y septiembre de 2025.
+- `gold.twitch_steam_relationship` contiene 9.042 observaciones de 1.191
+  juegos entre enero de 2016 y septiembre de 2024.
+- La asociación Twitch-Steam se pudo calcular con jugadores válidos para 5.182
+  observaciones y 458 juegos. Por tanto, esta conclusión utiliza una muestra
+  menor que el total de juegos presentes en Gold.
+
+### Evolución de jugadores en Steam
+
+- La media mensual de jugadores por juego aumenta en términos generales hacia
+  el final de la ventana observada: pasa de valores cercanos a 400 en 2012 a
+  valores cercanos a 858 en septiembre de 2025.
+- La mediana mensual permanece muy por debajo de la media durante todo el
+  periodo. Esto indica una distribución sesgada: pocos juegos concentran
+  grandes cantidades de jugadores, mientras muchos juegos tienen comunidades
+  pequeñas.
+- Los mayores crecimientos porcentuales están dominados por juegos cuyo valor
+  anterior era cercano a cero. Por eso aparecen porcentajes muy elevados,
+  como 193.304% para *METAL GEAR RISING: REVENGEANCE*. Estos valores no deben
+  interpretarse directamente como los mayores incrementos absolutos ni como
+  evidencia de un efecto de Twitch.
+
+### Relación entre Twitch y el crecimiento posterior en Steam
+
+- La correlación entre `hours_watched` en Twitch y el crecimiento posterior de
+  jugadores en Steam es `-0,0032`, prácticamente nula en la muestra analizada.
+- La media del crecimiento posterior es `4,408%`, pero la mediana es
+  `-0,0308%`. La diferencia muestra que la media está influida por
+  observaciones extremas; la mediana representa mejor el comportamiento típico
+  de la muestra.
+- El análisis por cuartiles no presenta una tendencia monotónica:
+  - cuartil 1: crecimiento medio de `3,600%`;
+  - cuartil 2: crecimiento medio de `11,361%`;
+  - cuartil 3: crecimiento medio de `0,324%`;
+  - cuartil 4: crecimiento medio de `2,342%`.
+- El segundo cuartil presenta la mayor media, pero esto no permite afirmar que
+  una mayor exposición produzca mayor crecimiento. La falta de orden creciente
+  entre cuartiles y la correlación cercana a cero no respaldan una relación
+  lineal global.
+
+### Catálogo y reseñas
+
+- `gold.dim_game` contiene 144.000 juegos y el precio medio observado es
+  `8,983108`.
+- La proporción media de reseñas positivas es `0,7581` entre los juegos que
+  tienen reseñas válidas.
+- 60.929 juegos no tienen `review_ratio`, aproximadamente el 42,3% del
+  catálogo. Esta ausencia debe considerarse al interpretar la valoración
+  agregada y no debe confundirse con una proporción de reseñas negativa.
+- En esta ejecución todos los registros tienen `is_unreleased = false`; por
+  tanto, no se observó una separación efectiva entre juegos publicados y no
+  publicados en la consulta de catálogo.
+
+### Limitaciones e interpretación
+
+Los cambios porcentuales son inestables cuando el valor del mes anterior es
+igual o cercano a cero. Para un análisis posterior sería recomendable
+complementarlos con cambios absolutos, umbrales mínimos de jugadores y medidas
+robustas como medianas o percentiles. También sería necesario controlar por
+fecha de lanzamiento, promociones, estacionalidad, actualizaciones y otros
+factores antes de realizar una inferencia causal. Con los resultados actuales,
+la conclusión principal es que no se observa una asociación lineal relevante
+entre las horas vistas en Twitch y el crecimiento posterior de jugadores en
+Steam.
