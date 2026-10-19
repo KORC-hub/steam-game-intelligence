@@ -26,40 +26,44 @@ causales.
 - Cuatro notebooks de diagnóstico en
   [`notebooks/data_validations/`](./notebooks/data_validations/).
 - La carpeta [`notebooks/`](./notebooks/) contiene notebooks de consulta,
-  validación y exportación de resultados; no escribe las tablas Silver.
-- Notebook de transformación
-  [`src/transformaciones/`](./src/transformaciones) para construir las tres
+  validación y exportación de resultados; los informes se guardan en
+  [`notebooks/data_validations/result_outputs/`](./notebooks/data_validations/result_outputs/)
+  y no escribe las tablas Silver.
+- Notebooks de transformación
+  [`src/transformation/`](./src/transformation) para construir las tres
   tablas Silver y sus tablas DLQ.
+- Notebook [`src/gold.ipynb`](./src/gold.ipynb) para construir `game_growth`,
+  `twitch_steam_relationship` y `dim_game` exclusivamente desde Silver.
+- Notebook de análisis
+  [`notebooks/gold_analysis.ipynb`](./notebooks/gold_analysis.ipynb) para
+  consultar Gold y responder las preguntas analíticas sin modificar tablas.
 - Orquestador
-  [`src/silver_orquestator.ipynb`](./src/silver_orquestator.ipynb) con corte
-  único de Bronze y parámetros compatibles con un Job.
+  [`notebooks/silver_orquestator.ipynb`](./notebooks/silver_orquestator.ipynb)
+  con corte único de Bronze, ejecución de Silver/DLQ y Gold, y parámetros
+  compatibles con un Job.
 - Diagnósticos SQL para volumen, cobertura, nulos, duplicados, formatos,
   rangos, métricas inconsistentes, variaciones entre snapshots y muestras de
   registros problemáticos.
 - Documentación técnica de arquitectura, contrato de datos y validaciones
   Silver/DLQ en [`docs/`](./docs/).
 
-### Implementado como código, pendiente de ejecución
+### Implementado como código, pendiente de verificación en Databricks
 
-- Flujo `Bronze → Silver → DLQ` mediante notebooks coordinados.
+- Flujo `Bronze → Silver → DLQ → Gold` mediante notebooks coordinados.
 - Estandarización de nombres, tipos, listas y fechas en Silver.
 - Validaciones de calidad aplicadas durante el procesamiento.
 - Separación de filas aprobadas en Silver y filas rechazadas en DLQ.
 - Escrituras Delta repetibles mediante `CREATE OR REPLACE TABLE` sobre el
   estado completo de las fuentes actuales.
 - Esquemas y tablas creados dinámicamente a partir de parámetros de ejecución.
+- Notebook Gold para crear `game_growth`, `twitch_steam_relationship` y
+  `dim_game`, además del resumen `audit.match_quality`.
+- Notebook de consultas Gold para comparar evolución de jugadores, exposición
+  en Twitch y cambios posteriores en Steam.
 
-La ejecución real de estos notebooks todavía debe verificarse en Databricks.
-El repositorio contiene el código, pero no afirma que las tablas ya existan en
-el workspace.
-
-### En diseño
-
-- Tablas Gold para crecimiento de jugadores, relación Twitch–Steam y una
-  dimensión o métrica de estado del juego.
-
-Gold, el Job y las pruebas formales de idempotencia todavía requieren
-implementación o validación en Databricks.
+La ejecución completa y las pruebas formales de idempotencia todavía deben
+verificarse en Databricks. El repositorio contiene el código, pero no afirma
+que todas las tablas existan o estén pobladas en el workspace.
 
 ## Fuentes de datos
 
@@ -146,7 +150,7 @@ por juego en `games`, una fila por juego y mes en `player_counts_monthly` y
 una fila por mes y posición en `twitch_activity_monthly`.
 
 Las transformaciones que escriben tablas viven en
-[`src/transformaciones/`](./src/transformaciones/). Cada notebook contiene una
+[`src/transformation/`](./src/transformation/). Cada notebook contiene una
 sección SQL para Silver y otra para DLQ.
 
 ### DLQ
@@ -161,17 +165,19 @@ valores negativos, rangos imposibles, nombres vacíos, conversiones de `gain` y
 duplicados conflictivos. Los rechazos conservan `motivo_rechazo`, reglas,
 payload y metadatos de corrida.
 
-### Gold
+### Gold implementado como código
 
-El alcance previsto contempla:
+El alcance implementado contempla:
 
 - `gold.game_growth`: evolución mensual de jugadores y métricas de crecimiento.
 - `gold.twitch_steam_relationship`: relación entre actividad de Twitch y
   jugadores de Steam cuando existe un match único.
-- Una tercera tabla de dimensión o estado del juego, cuya definición se
-  completará junto con la fórmula correspondiente.
+- `gold.dim_game`: dimensión vigente del catálogo con `review_ratio`.
 
 Gold debe construirse exclusivamente a partir de Silver validado.
+La creación de estas tablas ocurre en `src/gold.ipynb`; las consultas para
+responder las preguntas analíticas ocurren en
+[`notebooks/gold_analysis.ipynb`](./notebooks/gold_analysis.ipynb).
 
 ## Unity Catalog
 
@@ -197,7 +203,7 @@ steam_game_intelligence
 ├── gold
 │   ├── game_growth
 │   ├── twitch_steam_relationship
-│   └── <tercera tabla Gold>
+│   └── dim_game
 └── audit
 ```
 
@@ -227,10 +233,10 @@ La descripción detallada se encuentra en:
 
 ## Próximos pasos
 
-1. Ejecutar el orquestador en Databricks y verificar la creación de Silver/DLQ.
-2. Construir Gold únicamente desde Silver.
-3. Configurar el flujo completo mediante un Job sin activar la ingesta Bronze.
-4. Ejecutar pruebas repetidas que demuestren que Silver, DLQ y Gold no generan
+1. Ejecutar el orquestador completo en Databricks y verificar Silver, DLQ y
+   Gold.
+2. Configurar el flujo completo mediante un Job sin activar la ingesta Bronze.
+3. Ejecutar pruebas repetidas que demuestren que Silver, DLQ y Gold no generan
    duplicados y reflejan las actualizaciones de Bronze.
 
 Hasta completar esos pasos, las tablas y métricas de las capas posteriores

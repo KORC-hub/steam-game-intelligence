@@ -2,11 +2,11 @@
 
 ## Principio
 
-Las validaciones se aplican en línea durante `03_transformaciones`. Una fila que
+Las validaciones se aplican en línea durante los notebooks de
+[`src/transformation/`](../src/transformation/). Una fila que
 incumple una regla no entra a Silver y se escribe en DLQ con un motivo
 explícito. El perfilado de los notebooks de diagnóstico fue la evidencia para fijar el
-contrato. Las reglas de esta página están implementadas en
-[`notebooks/silver/03_transformaciones.ipynb`](../notebooks/silver/03_transformaciones.ipynb).
+contrato.
 
 ## Orden de procesamiento
 
@@ -36,7 +36,6 @@ dependa del catálogo de juegos sin invertir el flujo.
 | `name_vacio` | rule | `name IS NULL OR trim(name) = ''` | impide identificar y relacionar el juego |
 | `price_negativo` | rule | `price < 0` | un precio negativo no representa una métrica válida |
 | `conteo_negativo` | rule | `positive < 0 OR negative < 0 OR peak_ccu < 0` | métricas de actividad o reviews negativas son inconsistentes |
-| `release_date_invalida` | rule | fecha informada que no puede convertirse | protege la dimensión temporal; Bronze ya declara esta columna como `date` |
 | `estimated_owners_invalido` | rule | rango informado sin extremos numéricos | evita publicar un rango de propietarios ilegible |
 
 `release_date` futura no se rechaza. El valor cero de puntuaciones se conserva
@@ -61,11 +60,11 @@ Los huérfanos se conservan con `in_catalog = false`; no son rechazo DLQ.
 | `rank_fuera_de_rango` | rule | `twitch_rank IS NULL OR twitch_rank < 1 OR twitch_rank > 200` | la fuente declara un top 200 |
 | `game_vacio` | rule | `game IS NULL OR trim(game) = ''` | no hay nombre para inspección o matching |
 | `metrica_negativa` | rule | cualquier métrica de audiencia/emisión `< 0` | las métricas negativas son inconsistentes |
-| `duplicado_rank_mes` | rule | más de una fila por `(month_start, twitch_rank)` | el grano Silver exige un rank único por mes |
 
 Para duplicados Twitch por `(month_start, twitch_rank)`, se conserva la fila
 con mayor `hours_watched`; el desempate es por `game_normalized` y luego
-`_ingested_at`. No se rechaza Twitch únicamente por no hacer match con Steam.
+`_ingested_at`. Los duplicados descartados no se escriben actualmente en DLQ.
+No se rechaza Twitch únicamente por no hacer match con Steam.
 
 ## Deduplificación
 
@@ -86,14 +85,12 @@ Si una fila viola varias reglas, se crea un solo registro DLQ:
 
 - `motivo_rechazo`: reglas unidas con `; `;
 - `reglas_violadas`: array de nombres de regla;
-- `rule_type`: `key` o `rule`;
 - `payload`: JSON del staging;
-- clave disponible, aunque sea nula;
-- `_reject_key`: hash de `_row_hash` y `_ingested_at`.
+- `_reject_key`: hash determinista de la clave y el payload;
+- `_run_id` y `_rejected_at`.
 
-La clave `_reject_key` permite hacer `MERGE` y evita duplicar un rechazo al
-reprocesar el mismo cutoff. `WHEN NOT MATCHED BY SOURCE THEN DELETE` mantiene
-DLQ alineado con el estado rechazado de la fuente al cutoff actual.
+La implementación actual reconstruye la tabla DLQ con `CREATE OR REPLACE TABLE`
+para mantenerla alineada con el estado rechazado de la fuente al cutoff actual.
 
 ## Contabilidad obligatoria
 

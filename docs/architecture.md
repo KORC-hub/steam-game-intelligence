@@ -10,14 +10,10 @@ produce Silver, DLQ y Gold.
 ## Flujo lógico
 
 ```text
-Bronze existente
-    |
-    | lectura con un cutoff común por corrida
+bronze existente
+    | contrato y perfilado mediante diagnósticos
     v
-01_bronze_gate
-    | contrato, perfilado, conteo en seco y audit
-    v
-silver_orquestator
+notebooks/silver_orquestator
     | schemas -> transformaciones SQL por tabla
     +----------------------+
     |                      |
@@ -25,21 +21,23 @@ silver_orquestator
 Silver validado          DLQ rechazados
     |
     v
-03_gold
+src/gold
     |
     v
 Gold analítico
 ```
 
-El coordinador `src/silver_orquestator` ejecuta los pasos de forma secuencial:
+El coordinador `notebooks/silver_orquestator.ipynb` ejecuta los pasos de forma secuencial:
 
 ```text
-crear_schemas -> games -> player_counts_monthly -> twitch_activity_monthly
+crear_schemas -> games -> player_counts_monthly -> twitch_activity_monthly -> gold
 ```
 
-El orquestador calcula el corte y ejecuta los notebooks de
-`src/transformaciones/`. Gold queda fuera de esta entrega y debe consumir
-únicamente las tablas Silver validadas.
+La creación de tablas pertenece a `src/`. Los notebooks de `notebooks/` son de
+diagnóstico o consulta. En particular,
+[`notebooks/gold_analysis.ipynb`](../notebooks/gold_analysis.ipynb) consulta
+Gold para responder las preguntas analíticas y no escribe tablas.
+
 
 ## Capas y responsabilidades
 
@@ -50,11 +48,11 @@ Las tablas no se modifican en este pipeline. La ingesta diaria de
 `steam_games` y `steam_games_review` es append; las fuentes de SteamCharts y
 Twitch son cargas únicas según el plan.
 
-### Bronze gate y audit
+### Bronze y audit
 
 El orquestador no ejecuta la ingesta Bronze. Comprueba `run_ingestion=false`,
 crea los esquemas de salida si faltan, calcula un único `cutoff_us` y pasa
-todos los parámetros como strings a los notebooks Silver/DLQ.
+todos los parámetros como strings a los notebooks Silver/DLQ y Gold.
 
 ### Silver
 
@@ -77,10 +75,9 @@ rechazados correspondiente. Un registro rechazado se conserva una sola vez por
 
 - `motivo_rechazo`;
 - `reglas_violadas`;
-- tipo de regla (`key` o `rule`);
 - payload serializado;
-- claves disponibles;
-- hash y metadatos de Bronze, cutoff y corrida.
+- `_reject_key`;
+- `_run_id` y `_rejected_at`.
 
 Los rechazados no deben mezclarse con `audit` ni entrar a Gold.
 
@@ -90,7 +87,14 @@ Gold lee únicamente Silver validado. El alcance documentado en el plan es:
 
 - `gold.game_growth`;
 - `gold.twitch_steam_relationship`;
-- `gold.dim_game` o `gold.game_health`, según D9.
+- `gold.dim_game`, según la decisión confirmada.
+
+También se crea `audit.match_quality` con el conteo de matches únicos,
+ambiguos y ausentes, ponderado por filas y horas vistas.
+
+Las consultas descriptivas sobre estas tablas se ejecutan en
+`notebooks/gold_analysis.ipynb`. Sus resultados representan asociaciones y no
+causalidad.
 
 El matching Twitch–Steam se resuelve en Gold a partir de nombres normalizados.
 Los matches ambiguos se excluyen por defecto hasta que una decisión de la
@@ -104,7 +108,8 @@ La idempotencia se basa en:
 2. `_row_hash` determinista, excluyendo metadatos de procesamiento;
 3. `MERGE` en Silver por clave de negocio;
 4. `CREATE OR REPLACE TABLE` en Silver y DLQ para reconstruir de forma
-   determinista el estado completo visible hasta el cutoff;
+   determinista el estado completo visible hasta el cutoff. Esta es la
+   estrategia implementada actualmente; el plan original proponía `MERGE`.
 5. `INSERT OVERWRITE` para Gold;
 6. contabilidad de filas antes y después de escribir.
 
