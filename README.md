@@ -37,6 +37,12 @@ causales.
 - Notebook de análisis
   [`notebooks/gold_analysis.ipynb`](./notebooks/gold_analysis.ipynb) para
   consultar Gold y responder las preguntas analíticas sin modificar tablas.
+  Su última celda exporta los resultados a
+  [`notebooks/data_validations/result_outputs/resultados_gold_analysis.md`](./notebooks/data_validations/result_outputs/resultados_gold_analysis.md).
+- Notebook de pruebas
+  [`notebooks/idempotency_tests.ipynb`](./notebooks/idempotency_tests.ipynb)
+  para validar ejecuciones repetidas en esquemas sandbox sin modificar Bronze
+  real.
 - Orquestador
   [`notebooks/silver_orquestator.ipynb`](./notebooks/silver_orquestator.ipynb)
   con corte único de Bronze, ejecución de Silver/DLQ y Gold, y parámetros
@@ -60,6 +66,8 @@ causales.
   `dim_game`, además del resumen `audit.match_quality`.
 - Notebook de consultas Gold para comparar evolución de jugadores, exposición
   en Twitch y cambios posteriores en Steam.
+- Notebook de idempotencia para comparar conteos, huellas, claves duplicadas e
+  historial de Delta en Silver, DLQ y Gold.
 
 La ejecución completa y las pruebas formales de idempotencia todavía deben
 verificarse en Databricks. El repositorio contiene el código, pero no afirma
@@ -236,8 +244,10 @@ La descripción detallada se encuentra en:
 1. Ejecutar el orquestador completo en Databricks y verificar Silver, DLQ y
    Gold.
 2. Configurar el flujo completo mediante un Job sin activar la ingesta Bronze.
-3. Ejecutar pruebas repetidas que demuestren que Silver, DLQ y Gold no generan
-   duplicados y reflejan las actualizaciones de Bronze.
+3. Ejecutar
+   [`notebooks/idempotency_tests.ipynb`](./notebooks/idempotency_tests.ipynb)
+   en Databricks para demostrar que Silver, DLQ y Gold no generan duplicados y
+   reflejan las actualizaciones de Bronze sandbox.
 
 Hasta completar esos pasos, las tablas y métricas de las capas posteriores
 deben considerarse código preparado, no resultados publicados.
