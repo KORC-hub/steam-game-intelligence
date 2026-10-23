@@ -9,7 +9,7 @@ no sustituyen la verificación contra `printSchema()` o `DESCRIBE` en Databricks
 | Tabla | Carga | Clave natural esperada | Particularidades |
 |---|---|---|---|
 | `steam_games` | append diario | `app_id` + `_ingested_at` | `estimated_owners`, `genres`, `categories` y `tags` son strings; algunos valores numéricos fueron inferidos como `double` |
-| `steam_games_review` | append diario | `app_id` + `_ingested_at` | `reviews` es un string de estructura aún no definida; está fuera del alcance Silver/Gold provisional |
+| `steam_games_review` | append diario | `app_id` + `_ingested_at` | `reviews` es un string de estructura aún no definida; se perfila antes de diseñar Silver/DLQ |
 | `steamcharts_2025_history_data` | carga única | `(steam_appid, month)` | `month` y `gain` son strings; sus formatos deben medirse antes de decidir el parser |
 | `twitch_top_200_games_data` | carga única | `(Year, Month, Rank)` | nombres en PascalCase; no contiene `app_id`; el enlace con Steam es por nombre |
 
@@ -94,3 +94,10 @@ Los siguientes valores no están fijados en esta documentación:
 - existencia de valores no enteros en columnas inferidas como `double`.
 
 Estos datos deben venir del perfilado ejecutado, no de supuestos.
+
+El perfilado específico de `steam_games_review` se ejecuta en
+[`05_validacion_steam_games_review.ipynb`](../notebooks/data_validations/05_validacion_steam_games_review.ipynb).
+Su celda final genera
+`notebooks/data_validations/result_outputs/resultados_05_validacion_steam_games_review.md`.
+Las reglas definitivas de Silver y DLQ para esta fuente deben fijarse después
+de revisar ese informe.

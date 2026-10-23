@@ -23,8 +23,11 @@ causales.
 - Capa Bronze existente con tablas Delta y un Volume para los archivos de
   Kaggle.
 - Notebooks de ingesta para las fuentes de SteamCharts, Steam Games y Twitch.
-- Cuatro notebooks de diagnóstico en
+- Cinco notebooks de diagnóstico en
   [`notebooks/data_validations/`](./notebooks/data_validations/).
+- Notebook específico de validación para `steam_games_review` en
+  [`notebooks/data_validations/05_validacion_steam_games_review.ipynb`](./notebooks/data_validations/05_validacion_steam_games_review.ipynb),
+  incluyendo perfilado del campo `reviews` y exportación Markdown.
 - La carpeta [`notebooks/`](./notebooks/) contiene notebooks de consulta,
   validación y exportación de resultados; los informes se guardan en
   [`notebooks/data_validations/result_outputs/`](./notebooks/data_validations/result_outputs/)
