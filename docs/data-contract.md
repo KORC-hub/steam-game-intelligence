@@ -8,15 +8,21 @@ no sustituyen la verificación contra `printSchema()` o `DESCRIBE` en Databricks
 
 | Tabla | Carga | Clave natural esperada | Particularidades |
 |---|---|---|---|
-| `steam_games` | append diario | `app_id` + `_ingested_at` | `estimated_owners`, `genres`, `categories` y `tags` son strings; algunos valores numéricos fueron inferidos como `double` |
-| `steam_games_review` | append diario | `app_id` + `_ingested_at` | `reviews` es un string de estructura aún no definida; se perfila antes de diseñar Silver/DLQ |
-| `steamcharts_2025_history_data` | carga única | `(steam_appid, month)` | `month` y `gain` son strings; sus formatos deben medirse antes de decidir el parser |
-| `twitch_top_200_games_data` | carga única | `(Year, Month, Rank)` | nombres en PascalCase; no contiene `app_id`; el enlace con Steam es por nombre |
+| `steam_games_batch` | overwrite por batch | `app_id` + `_ingested_at` | `estimated_owners`, `genres`, `categories` y `tags` son strings; algunos valores numéricos fueron inferidos como `double` |
+| `steam_game_reviews_batch` | overwrite por batch | `app_id` + `_ingested_at` | `reviews` es un string de estructura aún no definida; se conserva como texto en Silver y se valida sin parsearlo |
+| `steamcharts_player_counts_monthly` | carga única | `(steam_appid, month)` | `month` y `gain` son strings; sus formatos deben medirse antes de decidir el parser |
+| `twitch_top_games_monthly` | carga única | `(Year, Month, Rank)` | nombres en PascalCase; no contiene `app_id`; el enlace con Steam es por nombre |
 
 Las tablas reales del repositorio son las anteriores. El README contiene
 nombres históricos (`steam_reviews`, `steam_player_counts_monthly` y
 `twitch_top200_monthly`) que no deben usarse para implementar el pipeline sin
 verificación. El plan y los notebooks de diagnóstico usan los nombres reales.
+
+La convención vigente es `sistema_fuente_entidad_granularidad_o_estado`.
+Bronze conserva nombres como `steam_games_batch` y
+`twitch_top_games_monthly`; Silver usa nombres de negocio como
+`steam_player_counts_monthly`. El mecanismo actual de adquisición es
+`kagglehub`, no una API de Steam o Twitch en vivo.
 
 ## Campos de control
 
@@ -25,12 +31,13 @@ Todas las fuentes esperadas incluyen:
 - `_ingested_at`: timestamp de llegada y límite para el cutoff;
 - `_source`: procedencia de la fila.
 
-No existe `_batch_id`. Por eso el lote se identifica mediante `_ingested_at` y
-el coordinador debe calcular un cutoff único para toda la corrida.
+No existe `_batch_id`. El batch reemplaza el contenido anterior de Bronze y se
+identifica mediante `_ingested_at`; el coordinador debe calcular un cutoff único
+para toda la corrida.
 
 ## Transformación prevista hacia Silver
 
-### `steam_games` -> `silver.games`
+### `steam_games_batch` -> `silver.steam_games`
 
 Se espera conservar los atributos usados por Gold: identificación, nombre,
 fecha, precio, propietarios, desarrolladores, publicadores, listas
@@ -45,7 +52,7 @@ Transformaciones implementadas:
 - los ceros de puntuaciones se conservan como valores válidos;
 - los contadores se convierten con tipos enteros/decimales seguros.
 
-### `steamcharts_2025_history_data` -> `silver.player_counts_monthly`
+### `steamcharts_player_counts_monthly` -> `silver.steam_player_counts_monthly`
 
 Se produce:
 
@@ -56,7 +63,7 @@ Se produce:
 - `name` y `name_normalized`;
 - `in_catalog`, sin rechazar huérfanos.
 
-### `twitch_top_200_games_data` -> `silver.twitch_activity_monthly`
+### `twitch_top_games_monthly` -> `silver.twitch_game_activity_monthly`
 
 Se espera estandarizar:
 
@@ -87,7 +94,7 @@ Los siguientes valores no están fijados en esta documentación:
 
 - formato efectivo de `month`;
 - patrones efectivos de `gain`;
-- cantidad de snapshots distintos de `steam_games`;
+- cantidad de batchs distintos de `steam_games_batch`;
 - proporción de huérfanos SteamCharts;
 - proporción de matches únicos, ambiguos y ausentes Twitch–Steam;
 - semántica de ceros;
@@ -95,9 +102,10 @@ Los siguientes valores no están fijados en esta documentación:
 
 Estos datos deben venir del perfilado ejecutado, no de supuestos.
 
-El perfilado específico de `steam_games_review` se ejecuta en
-[`05_validacion_steam_games_review.ipynb`](../notebooks/data_validations/05_validacion_steam_games_review.ipynb).
+El perfilado específico de `steam_game_reviews_batch` se ejecuta en
+[`02_diagnostico_steam_games_review.ipynb`](../notebooks/data_validations/02_diagnostico_steam_games_review.ipynb)
+y su transformación se realiza en `src/transformation/silver_game_reviews.ipynb`.
 Su celda final genera
-`notebooks/data_validations/result_outputs/resultados_05_validacion_steam_games_review.md`.
+`notebooks/data_validations/result_outputs/resultados_02_diagnostico_steam_games_review.md`.
 Las reglas definitivas de Silver y DLQ para esta fuente deben fijarse después
 de revisar ese informe.

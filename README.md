@@ -23,17 +23,19 @@ causales.
 - Capa Bronze existente con tablas Delta y un Volume para los archivos de
   Kaggle.
 - Notebooks de ingesta para las fuentes de SteamCharts, Steam Games y Twitch.
-- Cinco notebooks de diagnóstico en
+- Cuatro notebooks de diagnóstico en
   [`notebooks/data_validations/`](./notebooks/data_validations/).
-- Notebook específico de validación para `steam_games_review` en
-  [`notebooks/data_validations/05_validacion_steam_games_review.ipynb`](./notebooks/data_validations/05_validacion_steam_games_review.ipynb),
+- La fuente `steam_game_reviews_batch` se valida en
+  [`notebooks/data_validations/02_diagnostico_steam_games_review.ipynb`](./notebooks/data_validations/02_diagnostico_steam_games_review.ipynb)
+  y se transforma en
+  [`src/transformation/silver_game_reviews.ipynb`](./src/transformation/silver_game_reviews.ipynb),
   incluyendo perfilado del campo `reviews` y exportación Markdown.
 - La carpeta [`notebooks/`](./notebooks/) contiene notebooks de consulta,
   validación y exportación de resultados; los informes se guardan en
   [`notebooks/data_validations/result_outputs/`](./notebooks/data_validations/result_outputs/)
   y no escribe las tablas Silver.
 - Notebooks de transformación
-  [`src/transformation/`](./src/transformation) para construir las tres
+  [`src/transformation/`](./src/transformation) para construir las cuatro
   tablas Silver y sus tablas DLQ.
 - Notebook [`src/gold.ipynb`](./src/gold.ipynb) para construir `game_growth`,
   `twitch_steam_relationship` y `dim_game` exclusivamente desde Silver.
@@ -51,7 +53,7 @@ causales.
   con corte único de Bronze, ejecución de Silver/DLQ y Gold, y parámetros
   compatibles con un Job.
 - Diagnósticos SQL para volumen, cobertura, nulos, duplicados, formatos,
-  rangos, métricas inconsistentes, variaciones entre snapshots y muestras de
+  rangos, métricas inconsistentes, estado del batch actual y muestras de
   registros problemáticos.
 - Documentación técnica de arquitectura, contrato de datos y validaciones
   Silver/DLQ en [`docs/`](./docs/).
@@ -80,22 +82,58 @@ que todas las tablas existan o estén pobladas en el workspace.
 
 | Fuente | Tabla Bronze | Carga | Cobertura conocida |
 |---|---|---|---|
-| Steam Games | `steam_games` | Append de snapshots | Catálogo y atributos de juegos |
-| Steam Games Reviews | `steam_games_review` | Append de snapshots | Reviews en una estructura string aún no definida |
-| SteamCharts | `steamcharts_2025_history_data` | Carga única | Histórico mensual de jugadores, 2012–2025 |
-| Twitch Top 200 | `twitch_top_200_games_data` | Carga única | Actividad mensual, 2016–2024 |
+| Steam Games | `steam_games_batch` | Overwrite por batch | Catálogo y atributos de juegos |
+| Steam Games Reviews | `steam_game_reviews_batch` | Overwrite por batch | Reviews en una estructura string aún no definida |
+| SteamCharts | `steamcharts_player_counts_monthly` | Carga única | Histórico mensual de jugadores, 2012–2025 |
+| Twitch Top 200 | `twitch_top_games_monthly` | Carga única | Actividad mensual, 2016–2024 |
 
 Las tablas Bronze reales son las indicadas arriba. Algunos nombres antiguos que
 aparecen en documentación previa (`steam_reviews`,
 `steam_player_counts_monthly` y `twitch_top200_monthly`) no deben utilizarse
 sin verificarlos contra el catálogo.
 
+### Convención de nombres
+
+Se adopta una convención de nombres en `snake_case` basada en tres elementos:
+
+```text
+<sistema_fuente>_<entidad>_<granularidad_o_estado>
+```
+
+En Bronze, el nombre conserva el sistema fuente y describe que la fuente se
+recibe como un batch reemplazable o como una serie mensual:
+
+- `steam_games_batch`
+- `steam_game_reviews_batch`
+- `steamcharts_player_counts_monthly`
+- `twitch_top_games_monthly`
+
+En Silver se usa el nombre de negocio normalizado:
+
+- `silver.steam_games`
+- `silver.steam_player_counts_monthly`
+- `silver.twitch_game_activity_monthly`
+
+Las tablas DLQ conservan el nombre lógico de Silver y agregan `_rejected`.
+Gold mantiene nombres analíticos (`game_growth`,
+`twitch_steam_relationship` y `dim_game`) porque no representa una fuente raw
+sino productos del modelo.
+
+La adquisición actual del proyecto se realiza mediante `kagglehub` desde
+datasets de Kaggle; no se consumen APIs de Steam o Twitch en vivo. Si se
+incorpora posteriormente una API directa, esta convención sigue siendo válida:
+el sistema fuente identifica el origen y no el mecanismo de transporte. El
+script de renombrado de objetos existentes está en
+[`docs/rename-tables.sql`](./docs/rename-tables.sql).
+
 ### Particularidades conocidas
 
-- `steam_games` y `steam_games_review` pueden contener snapshots diarios.
-- `steamcharts_2025_history_data` contiene `month` y `gain` como strings; su
+- `steam_games_batch` y `steam_game_reviews_batch` contienen el último batch
+  disponible. La ingesta usa `overwrite`, por lo que no acumulan batches
+  anteriores en Bronze.
+- `steamcharts_player_counts_monthly` contiene `month` y `gain` como strings; su
   formato efectivo debe confirmarse antes de definir el parser.
-- `twitch_top_200_games_data` no contiene `app_id`.
+- `twitch_top_games_monthly` no contiene `app_id`.
 - El cruce Twitch–Steam depende de nombres normalizados y puede producir
   coincidencias únicas, ambiguas o inexistentes.
 - La ausencia de un juego de Twitch en Steam no se considera por sí sola un
@@ -147,13 +185,13 @@ Silver y DLQ.
 
 ### Silver
 
-El alcance previsto contempla tres tablas principales:
+El alcance previsto contempla cuatro tablas principales:
 
 | Tabla | Propósito |
 |---|---|
-| `silver.games` | Estado vigente y atributos normalizados del catálogo |
-| `silver.player_counts_monthly` | Jugadores promedio y máximos por juego y mes |
-| `silver.twitch_activity_monthly` | Actividad de Twitch por mes y posición del ranking |
+| `silver.steam_games` | Estado vigente y atributos normalizados del catálogo |
+| `silver.steam_player_counts_monthly` | Jugadores promedio y máximos por juego y mes |
+| `silver.twitch_game_activity_monthly` | Actividad de Twitch por mes y posición del ranking |
 
 Silver debe contener únicamente registros que hayan pasado las validaciones y
 la deduplicación determinista. La implementación conserva una fila vigente
@@ -199,10 +237,10 @@ estructura objetivo es:
 steam_game_intelligence
 ├── bronze
 │   ├── kaggle_data/                         # Volume de archivos de origen
-│   ├── steam_games
-│   ├── steam_games_review
-│   ├── steamcharts_2025_history_data
-│   └── twitch_top_200_games_data
+│   ├── steam_games_batch
+│   ├── steam_game_reviews_batch
+│   ├── steamcharts_player_counts_monthly
+│   └── twitch_top_games_monthly
 ├── silver
 │   ├── games
 │   ├── player_counts_monthly
@@ -262,74 +300,70 @@ deben considerarse código preparado, no resultados publicados.
 
 Estas conclusiones corresponden a una ejecución de
 [`notebooks/gold_analysis.ipynb`](./notebooks/gold_analysis.ipynb) generada el
-19 de octubre de 2026 en UTC. Describen asociaciones observadas en los datos;
-no demuestran que la exposición en Twitch cause cambios en los jugadores de
-Steam.
+19 de octubre de 2026 en UTC. Están escritas para explicar directamente qué
+se observó en los datos. No demuestran que Twitch cause cambios en Steam.
 
 ### Cobertura analítica
 
-- `gold.game_growth` contiene 605.537 observaciones de 6.693 juegos entre
+- `gold.game_growth` tiene 605.537 registros de 6.693 juegos entre
   agosto de 2012 y septiembre de 2025.
-- `gold.twitch_steam_relationship` contiene 9.042 observaciones de 1.191
+- `gold.twitch_steam_relationship` tiene 9.042 registros de 1.191
   juegos entre enero de 2016 y septiembre de 2024.
-- La asociación Twitch-Steam se pudo calcular con jugadores válidos para 5.182
-  observaciones y 458 juegos. Por tanto, esta conclusión utiliza una muestra
-  menor que el total de juegos presentes en Gold.
+- Para comparar Twitch con Steam solo se pudieron usar 5.182 registros de 458
+  juegos. Por eso esta parte del análisis no representa a todos los juegos de
+  las tablas Gold.
 
 ### Evolución de jugadores en Steam
 
-- La media mensual de jugadores por juego aumenta en términos generales hacia
-  el final de la ventana observada: pasa de valores cercanos a 400 en 2012 a
-  valores cercanos a 858 en septiembre de 2025.
-- La mediana mensual permanece muy por debajo de la media durante todo el
-  periodo. Esto indica una distribución sesgada: pocos juegos concentran
-  grandes cantidades de jugadores, mientras muchos juegos tienen comunidades
-  pequeñas.
-- Los mayores crecimientos porcentuales están dominados por juegos cuyo valor
-  anterior era cercano a cero. Por eso aparecen porcentajes muy elevados,
-  como 193.304% para *METAL GEAR RISING: REVENGEANCE*. Estos valores no deben
-  interpretarse directamente como los mayores incrementos absolutos ni como
-  evidencia de un efecto de Twitch.
+- Al final del periodo, el promedio de jugadores por juego es mayor que al
+  principio: sube de cerca de 400 jugadores en 2012 a cerca de 858 en
+  septiembre de 2025.
+- El promedio es mucho mayor que la mediana. Esto significa que unos pocos
+  juegos tienen muchísimos jugadores y elevan el promedio. La mayoría de los
+  juegos tiene menos jugadores.
+- Algunos porcentajes de crecimiento son enormes porque el mes anterior tenía
+  casi cero jugadores. Por ejemplo, *METAL GEAR RISING: REVENGEANCE* aparece
+  con un crecimiento de `193.304%`. Ese porcentaje no significa que sea el juego
+  que más jugadores ganó. Tampoco demuestra que Twitch haya causado el aumento.
 
 ### Relación entre Twitch y el crecimiento posterior en Steam
 
-- La correlación entre `hours_watched` en Twitch y el crecimiento posterior de
-  jugadores en Steam es `-0,0032`, prácticamente nula en la muestra analizada.
-- La media del crecimiento posterior es `4,408%`, pero la mediana es
-  `-0,0308%`. La diferencia muestra que la media está influida por
-  observaciones extremas; la mediana representa mejor el comportamiento típico
-  de la muestra.
-- El análisis por cuartiles no presenta una tendencia monotónica:
-  - cuartil 1: crecimiento medio de `3,600%`;
-  - cuartil 2: crecimiento medio de `11,361%`;
-  - cuartil 3: crecimiento medio de `0,324%`;
-  - cuartil 4: crecimiento medio de `2,342%`.
-- El segundo cuartil presenta la mayor media, pero esto no permite afirmar que
-  una mayor exposición produzca mayor crecimiento. La falta de orden creciente
-  entre cuartiles y la correlación cercana a cero no respaldan una relación
-  lineal global.
+- La correlación entre las horas vistas en Twitch y el crecimiento posterior en
+  Steam es `-0,0032`. Este número está muy cerca de cero. En estos datos no se
+  ve una relación clara entre ambas medidas.
+- El crecimiento promedio es `4,408%`, pero el crecimiento de la mitad central
+  de los registros es aproximadamente `-0,0308%`. La diferencia ocurre porque
+  algunos porcentajes muy grandes cambian mucho el promedio. Por eso la mediana
+  describe mejor el resultado típico.
+- Al ordenar los juegos desde los que tuvieron menos horas vistas hasta los que
+  tuvieron más, los resultados no suben de forma ordenada:
+  - grupo 1: crecimiento promedio de `3,600%`;
+  - grupo 2: crecimiento promedio de `11,361%`;
+  - grupo 3: crecimiento promedio de `0,324%`;
+  - grupo 4: crecimiento promedio de `2,342%`.
+- El segundo grupo tiene el promedio más alto, pero los grupos no aumentan uno
+  tras otro. Por tanto, no se puede decir que más horas vistas en Twitch
+  produzcan más crecimiento en Steam.
 
 ### Catálogo y reseñas
 
-- `gold.dim_game` contiene 144.000 juegos y el precio medio observado es
+- `gold.dim_game` tiene 144.000 juegos y el precio medio observado es
   `8,983108`.
-- La proporción media de reseñas positivas es `0,7581` entre los juegos que
-  tienen reseñas válidas.
-- 60.929 juegos no tienen `review_ratio`, aproximadamente el 42,3% del
-  catálogo. Esta ausencia debe considerarse al interpretar la valoración
-  agregada y no debe confundirse con una proporción de reseñas negativa.
-- En esta ejecución todos los registros tienen `is_unreleased = false`; por
-  tanto, no se observó una separación efectiva entre juegos publicados y no
-  publicados en la consulta de catálogo.
+- Entre los juegos con reseñas válidas, la proporción promedio de reseñas
+  positivas es `0,7581`.
+- 60.929 juegos no tienen ese dato, aproximadamente el 42,3% del catálogo.
+  No tener el dato no significa tener reseñas negativas.
+- En esta ejecución todos los juegos aparecen como publicados. Por eso esta
+  consulta no permitió comparar juegos publicados con juegos aún no publicados.
 
 ### Limitaciones e interpretación
 
-Los cambios porcentuales son inestables cuando el valor del mes anterior es
-igual o cercano a cero. Para un análisis posterior sería recomendable
-complementarlos con cambios absolutos, umbrales mínimos de jugadores y medidas
-robustas como medianas o percentiles. También sería necesario controlar por
-fecha de lanzamiento, promociones, estacionalidad, actualizaciones y otros
-factores antes de realizar una inferencia causal. Con los resultados actuales,
-la conclusión principal es que no se observa una asociación lineal relevante
-entre las horas vistas en Twitch y el crecimiento posterior de jugadores en
-Steam.
+Los porcentajes son poco confiables cuando el mes anterior tiene casi cero
+jugadores. En una siguiente versión conviene mostrar también cuántos jugadores
+se ganaron o perdieron en números absolutos y exigir un mínimo de jugadores
+antes de calcular porcentajes.
+
+También faltan datos que pueden explicar los cambios: fecha de lanzamiento,
+promociones, temporadas y actualizaciones. La conclusión de este análisis es
+solamente descriptiva: con los datos disponibles no se observa una relación
+clara entre las horas vistas en Twitch y el crecimiento posterior en Steam.

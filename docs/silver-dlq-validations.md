@@ -22,13 +22,14 @@ Para cada tabla:
 8. escribir Silver y DLQ de forma idempotente;
 9. verificar la contabilidad.
 
-El orden entre tablas es `games` -> `player_counts_monthly` ->
-`twitch_activity_monthly`. Esto permite que una política futura de huérfanos
+El orden entre tablas es `steam_games` -> `steam_game_reviews` ->
+`steam_player_counts_monthly` ->
+`twitch_game_activity_monthly`. Esto permite que una política futura de huérfanos
 dependa del catálogo de juegos sin invertir el flujo.
 
 ## Reglas implementadas
 
-### `silver.games`
+### `silver.steam_games`
 
 | Regla | Tipo | Predicado de violación | Motivo |
 |---|---|---|---|
@@ -41,7 +42,24 @@ dependa del catálogo de juegos sin invertir el flujo.
 `release_date` futura no se rechaza. El valor cero de puntuaciones se conserva
 como válido.
 
-### `silver.player_counts_monthly`
+### `silver.steam_game_reviews`
+
+El diagnóstico encontró 13.501 filas, 13.501 `app_id` distintos y cero nulos o
+valores vacíos en las columnas principales. `reviews` se conserva como texto
+porque su estructura interna no está definida.
+
+| Regla | Tipo | Predicado de violación | Motivo |
+|---|---|---|---|
+| `app_id_invalido` | key | `app_id IS NULL OR app_id <= 0` | no existe una clave de juego utilizable |
+| `name_vacio` | rule | `name IS NULL OR trim(name) = ''` | impide identificar el juego |
+| `reviews_vacio` | rule | `reviews IS NULL OR trim(reviews) = ''` | no hay contenido de reseña que conservar |
+| `ingested_at_nulo` | rule | `_ingested_at IS NULL` | no se puede asociar la fila al batch cargado |
+| `source_vacio` | rule | `_source IS NULL OR trim(_source) = ''` | se pierde la trazabilidad de origen |
+
+La tabla Silver resultante es `silver.steam_game_reviews` y la tabla de
+rechazos es `dlq.steam_game_reviews_rejected`.
+
+### `silver.steam_player_counts_monthly`
 
 | Regla | Tipo | Predicado de violación | Motivo |
 |---|---|---|---|
@@ -52,7 +70,7 @@ como válido.
 
 Los huérfanos se conservan con `in_catalog = false`; no son rechazo DLQ.
 
-### `silver.twitch_activity_monthly`
+### `silver.twitch_game_activity_monthly`
 
 | Regla | Tipo | Predicado de violación | Motivo |
 |---|---|---|---|
@@ -75,9 +93,8 @@ PARTITION BY clave_de_negocio
 ORDER BY _ingested_at DESC, _row_hash DESC
 ```
 
-La fila con `rn = 1` es la vigente. Las filas con `rn > 1` son superseded:
-no se consideran DLQ porque son snapshots anteriores, no necesariamente datos
-inválidos.
+La fila con `rn = 1` es la vigente. Las filas con `rn > 1` se consideran
+duplicadas dentro del batch actual y no se publican en Silver.
 
 ## Motivos y estructura DLQ
 
@@ -115,13 +132,13 @@ debe presentar una ejecución incompleta como exitosa.
 Los notebooks de diagnóstico existentes ya consultan:
 
 - nulos por columna;
-- duplicados por clave y día/mes;
+- duplicados por clave dentro del batch actual;
 - valores fuera de rango;
 - formatos de `month`;
 - formatos de `gain`;
 - métricas negativas;
 - muestras de filas problemáticas;
-- variaciones entre snapshots;
+- estado del batch actual;
 - cobertura temporal.
 
 Esos notebooks sirven para explicar por qué cada regla es pertinente, pero no

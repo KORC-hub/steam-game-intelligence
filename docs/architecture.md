@@ -30,7 +30,7 @@ Gold analítico
 El coordinador `notebooks/silver_orquestator.ipynb` ejecuta los pasos de forma secuencial:
 
 ```text
-crear_schemas -> games -> player_counts_monthly -> twitch_activity_monthly -> gold
+crear_schemas -> steam_games -> steam_game_reviews -> steam_player_counts_monthly -> twitch_game_activity_monthly -> gold
 ```
 
 La creación de tablas pertenece a `src/`. Los notebooks de `notebooks/` son de
@@ -45,8 +45,12 @@ Gold para responder las preguntas analíticas y no escribe tablas.
 
 Bronze contiene los datos raw cargados desde Kaggle mediante `kagglehub`.
 Las tablas no se modifican en este pipeline. La ingesta diaria de
-`steam_games` y `steam_games_review` es append; las fuentes de SteamCharts y
+`steam_games_batch` y `steam_game_reviews_batch` se cargan con overwrite por batch; las fuentes de SteamCharts y
 Twitch son cargas únicas según el plan.
+
+Los objetos siguen la convención `sistema_fuente_entidad_granularidad_o_estado`.
+El renombrado de las tablas existentes se documenta en
+[`docs/rename-tables.sql`](./rename-tables.sql).
 
 ### Bronze y audit
 
@@ -60,9 +64,10 @@ El alcance acordado es:
 
 | Tabla | Grano |
 |---|---|
-| `silver.games` | un `app_id` vigente al cutoff |
-| `silver.player_counts_monthly` | `(app_id, month_start)` |
-| `silver.twitch_activity_monthly` | `(month_start, twitch_rank)` |
+| `silver.steam_games` | un `app_id` vigente al cutoff |
+| `silver.steam_game_reviews` | un `app_id` vigente al cutoff |
+| `silver.steam_player_counts_monthly` | `(app_id, month_start)` |
+| `silver.twitch_game_activity_monthly` | `(month_start, twitch_rank)` |
 
 Silver estandariza nombres, tipos y fechas; normaliza nombres para el matching;
 aplica reglas de clave y negocio; y conserva solamente filas aprobadas.

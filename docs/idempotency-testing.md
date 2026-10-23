@@ -13,27 +13,32 @@ El procedimiento está implementado en
 
 ## Aislamiento mediante sandbox
 
-La prueba no escribe en los esquemas de producción. A partir del catálogo
-configurado crea esquemas con el sufijo indicado por el widget
-`sandbox_suffix`. Por defecto utiliza:
+La prueba lee Bronze desde el catálogo fuente, pero escribe en un catálogo
+sandbox independiente. Por defecto utiliza:
 
 ```text
-bronze_sbx
-silver_sbx
-dlq_sbx
-gold_sbx
-audit_sbx
+source_catalog  = steam_game_intelligence
+sandbox_catalog = steam_game_intelligence_sbx
+```
+
+Dentro del catálogo sandbox se crean:
+
+```text
+steam_game_intelligence_sbx.bronze_sbx
+steam_game_intelligence_sbx.silver_sbx
+steam_game_intelligence_sbx.dlq_sbx
+steam_game_intelligence_sbx.gold_sbx
+steam_game_intelligence_sbx.audit_sbx
 ```
 
 El notebook copia a `bronze_sbx` las fuentes necesarias:
 
-- `steam_games`, filtrada de forma determinista con `app_id % 20 = 0`;
-- `steamcharts_2025_history_data`, filtrada con
+- `steam_games_batch`, filtrada de forma determinista con `app_id % 20 = 0`;
+- `steamcharts_player_counts_monthly`, filtrada con
   `steam_appid % 20 = 0`;
-- `twitch_top_200_games_data`, sin aplicar ese filtro.
+- `twitch_top_games_monthly`, sin aplicar ese filtro.
 
-La tabla `steam_games_review` no participa en el flujo Silver/Gold actual y no
-se copia para esta prueba. La ingesta Bronze permanece desactivada:
+La tabla `steam_game_reviews_batch` se copia completa y participa en la prueba Silver/DLQ. La ingesta Bronze permanece desactivada:
 `run_ingestion=false`.
 
 ## Parámetros de ejecución
@@ -42,12 +47,14 @@ Los widgets del notebook permiten configurar:
 
 | Widget | Valor por defecto | Uso |
 |---|---:|---|
-| `catalog` | `steam_game_intelligence` | Catálogo donde se crean los esquemas sandbox |
+| `source_catalog` | `steam_game_intelligence` | Catálogo principal desde el que se lee Bronze |
+| `sandbox_catalog` | `steam_game_intelligence_sbx` | Catálogo aislado donde se crean y escriben las tablas |
 | `orchestrator_path` | `./silver_orquestator` | Ruta del orquestador en el Git Folder |
 | `sandbox_suffix` | `_sbx` | Sufijo de aislamiento |
 | `timeout_seconds` | `3600` | Tiempo máximo para cada ejecución |
 | `run_mutation_tests` | `false` | Mantiene desactivada la mutación opcional |
 | `cleanup_sandbox` | `false` | Conserva los esquemas para inspección posterior |
+| `reset_sandbox_catalog` | `false` | Elimina y recrea el catálogo sandbox antes de copiar Bronze |
 
 El notebook calcula una sola vez `cutoff_us` y lo pasa a las dos ejecuciones.
 Cada ejecución recibe un `run_id` distinto para distinguirlas en los metadatos,
@@ -58,12 +65,14 @@ pero esto no debe cambiar el contenido lógico de las tablas.
 ### 1. Preparar los esquemas
 
 Se ejecuta `CREATE SCHEMA IF NOT EXISTS` para cada esquema sandbox. Después se
-reconstruyen las tres tablas Bronze sandbox a partir de las tablas Bronze
+reconstruyen las cuatro tablas Bronze sandbox a partir de las tablas Bronze
 existentes.
 
 La copia es deliberadamente determinista. Si se necesita repetir la prueba
-desde cero, se pueden conservar los esquemas para inspeccionarlos o activar
-`cleanup_sandbox=true` al final de una ejecución.
+desde cero, se debe activar `reset_sandbox_catalog=true`. El notebook ejecuta
+`DROP CATALOG <sandbox_catalog> CASCADE`, recrea el catálogo y vuelve a copiar
+Bronze. Esta opción solo se acepta para catálogos cuyo nombre termina en
+`_sbx` y nunca cuando coincide con `source_catalog`.
 
 ### 2. Ejecutar el orquestador por primera vez
 
@@ -74,9 +83,9 @@ secuencialmente:
 
 ```text
 crear_schemas
-  -> silver.games y DLQ games
-  -> silver.player_counts_monthly y DLQ correspondiente
-  -> silver.twitch_activity_monthly y DLQ correspondiente
+  -> silver.steam_games y DLQ games
+  -> silver.steam_player_counts_monthly y DLQ correspondiente
+  -> silver.twitch_game_activity_monthly y DLQ correspondiente
   -> Gold
 ```
 
@@ -122,12 +131,12 @@ con la referencia.
 Se comparan conteo y huella para:
 
 ```text
-silver.games
-silver.player_counts_monthly
-silver.twitch_activity_monthly
-dlq.games_rejected
-dlq.player_counts_monthly_rejected
-dlq.twitch_activity_monthly_rejected
+silver.steam_games
+silver.steam_player_counts_monthly
+silver.twitch_game_activity_monthly
+dlq.steam_games_rejected
+dlq.steam_player_counts_monthly_rejected
+dlq.twitch_game_activity_monthly_rejected
 gold.game_growth
 gold.twitch_steam_relationship
 gold.dim_game
@@ -142,9 +151,9 @@ Se cuentan grupos con más de una fila para las claves de negocio documentadas:
 
 | Tabla | Clave comprobada |
 |---|---|
-| `silver.games` | `app_id` |
-| `silver.player_counts_monthly` | `(app_id, month_start)` |
-| `silver.twitch_activity_monthly` | `(month_start, twitch_rank)` |
+| `silver.steam_games` | `app_id` |
+| `silver.steam_player_counts_monthly` | `(app_id, month_start)` |
+| `silver.twitch_game_activity_monthly` | `(month_start, twitch_rank)` |
 | `gold.game_growth` | `(app_id, month_start)` |
 | `gold.twitch_steam_relationship` | `(app_id, month_start)` |
 | `gold.dim_game` | `app_id` |
@@ -157,9 +166,9 @@ Para cada tabla DLQ se agrupa por `_reject_key` y se buscan grupos con más de
 una fila:
 
 ```text
-dlq.games_rejected
-dlq.player_counts_monthly_rejected
-dlq.twitch_activity_monthly_rejected
+dlq.steam_games_rejected
+dlq.steam_player_counts_monthly_rejected
+dlq.twitch_game_activity_monthly_rejected
 ```
 
 La prueba pasa cuando cada `_reject_key` aparece como máximo una vez. Esto
@@ -203,8 +212,8 @@ Databricks.
   rechazados, deduplicaciones y filas aprobadas. Esa contabilidad debe
   complementarse si se necesita evidencia detallada de cada etapa.
 - `cleanup_sandbox=false` permite revisar las tablas y el historial después de
-  la prueba. Solo debe usarse un sufijo que no coincida con esquemas de
-  producción.
+  la prueba. Con `cleanup_sandbox=true` se elimina el catálogo sandbox
+  completo mediante `DROP CATALOG ... CASCADE`.
 - Los cambios en el historial Delta entre ejecuciones son esperables; la
   condición de idempotencia se evalúa sobre el estado lógico visible, no sobre
   la igualdad de números de versión Delta.
@@ -214,9 +223,11 @@ Databricks.
 1. Abrir `notebooks/idempotency_tests.ipynb` en Databricks.
 2. Confirmar que `orchestrator_path` apunta a `./silver_orquestator`.
 3. Mantener `run_mutation_tests=false`.
-4. Mantener `cleanup_sandbox=false` durante la primera validación.
+4. Mantener `cleanup_sandbox=false` y `reset_sandbox_catalog=false` durante la
+   primera validación.
 5. Ejecutar todas las celdas en orden.
 6. Guardar la salida con los mensajes T1–T4 y el historial Delta.
 7. Revisar las tablas sandbox antes de eliminarlas.
-8. Ejecutar nuevamente con `cleanup_sandbox=true` solo cuando ya no se necesite
-   inspeccionar el sandbox.
+8. Para empezar de cero, ejecutar otra corrida con
+   `reset_sandbox_catalog=true`. Para eliminarlo al finalizar, usar
+   `cleanup_sandbox=true` solo cuando ya no se necesite inspeccionar el sandbox.
