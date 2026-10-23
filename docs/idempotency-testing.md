@@ -86,7 +86,7 @@ crear_schemas
   -> silver.steam_games y DLQ games
   -> silver.steam_player_counts_monthly y DLQ correspondiente
   -> silver.twitch_game_activity_monthly y DLQ correspondiente
-  -> Gold
+  -> Gold (`src/gold_tables`)
 ```
 
 La primera ejecución sirve como estado de referencia.
