@@ -6,16 +6,22 @@ Expected Databricks Python task parameters:
 """
 
 import argparse
+import shlex
+import sys
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Comprueba si existe una tabla de Unity Catalog."
     )
     parser.add_argument("--catalog", required=True, help="Nombre del catálogo.")
     parser.add_argument("--schema", required=True, help="Nombre del esquema.")
     parser.add_argument("--table", required=True, help="Nombre de la tabla.")
-    return parser.parse_args()
+    raw_args = sys.argv[1:] if argv is None else argv
+    normalized_args = []
+    for argument in raw_args:
+        normalized_args.extend(shlex.split(argument))
+    return parser.parse_args(normalized_args)
 
 
 args = parse_args()
