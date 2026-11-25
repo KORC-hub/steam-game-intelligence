@@ -1,6 +1,6 @@
 # Resultados — Cuaderno ML 1: K-Means de ciclos de vida
 
-- Generado en UTC: 2026-11-25T02:25:30.328981+00:00
+- Generado en UTC: 2026-11-25T04:16:40.299395+00:00
 - Gold: `steam_game_intelligence.gold`
 - Umbrales: min_months=12, min_peak_players=20.0
 - Juegos en el modelo: 4,007 (descartados por nulos: 0)
@@ -13,7 +13,7 @@
 | tabla | filas | juegos |
 | --- | --- | --- |
 | game_growth | 605537 | 6693 |
-| dim_game | 0 | 0 |
+| dim_game | 150848 | 150848 |
 | twitch_steam_relationship | 5498 | 552 |
 
 ## Juegos que cumplen cada combinación de umbrales
@@ -80,34 +80,37 @@
 
 | cluster_id | arquetipo | juegos | pct_juegos | mediana_pico_jugadores | mediana_meses_observados | mediana_pct_tiempo_al_pico | mediana_retencion | mediana_tendencia_anual_log | mediana_volatilidad | mediana_pico_sobre_promedio | pct_gratuitos | precio_medio | mediana_anio_lanzamiento | review_ratio_medio |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0 | Cluster 0 | 468 | 11.7 | 102 | 72 | 0.68 | 0.088 | 0.141 | 0.764 | 17.05 |  |  |  |  |
-| 1 | Cluster 1 | 2628 | 65.6 | 170 | 113 | 0.05 | 0.071 | -0.12 | 0.333 | 2.95 |  |  |  |  |
-| 2 | Cluster 2 | 911 | 22.7 | 260 | 118 | 0.66 | 0.454 | 0.097 | 0.258 | 2.44 |  |  |  |  |
+| 0 | Cluster 0 | 468 | 11.7 | 102 | 72 | 0.68 | 0.088 | 0.141 | 0.764 | 17.05 | 7.3 | 6.27 | 2016 | 0.699 |
+| 1 | Cluster 1 | 2628 | 65.6 | 170 | 113 | 0.05 | 0.071 | -0.12 | 0.333 | 2.95 | 13.9 | 16.19 | 2016 | 0.806 |
+| 2 | Cluster 2 | 911 | 22.7 | 260 | 118 | 0.66 | 0.454 | 0.097 | 0.258 | 2.44 | 13.3 | 16.46 | 2016 | 0.864 |
 
 ## Porcentaje de juegos de cada cluster por género (top 8)
 
-| arquetipo |
-| --- |
+| arquetipo | {"id":"23","description":"Indie"} | {"id":"1","description":"Action"} | {"id":"25","description":"Adventure"} | {"id":"2","description":"Strategy"} | {"id":"3","description":"RPG"} | {"id":"28","description":"Simulation"} | {"id":"4","description":"Casual"} | {"id":"37","description":"Free To Play"} |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Cluster 0 | 81.8 | 55.8 | 39.5 | 19 | 17.7 | 12.8 | 44.7 | 4.5 |
+| Cluster 1 | 48.8 | 44.3 | 33.3 | 28.1 | 26.8 | 23.4 | 15.8 | 12.1 |
+| Cluster 2 | 35.9 | 39.8 | 29.6 | 32.2 | 18.7 | 26.7 | 14.5 | 10.3 |
 
 ## Juegos de ejemplo por cluster (top 5 por pico)
 
 | cluster_id | rank_in_cluster | app_id | name | pico_jugadores | meses | retencion | release_year |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0 | 1 | 671860 | BattleBit Remastered | 45198 | 36 | 0.012 |  |
-| 0 | 2 | 323190 | Frostpunk | 19478 | 97 | 0.088 |  |
-| 0 | 3 | 668580 | Atomic Heart | 18457 | 33 | 0.035 |  |
-| 0 | 4 | 351940 | The Descendant | 10282 | 115 | 0.001 |  |
-| 0 | 5 | 343710 | Kholat | 5044 | 123 | 0.001 |  |
-| 1 | 1 | 578080 | PUBG: BATTLEGROUNDS | 1.58489e+06 | 102 | 0.184 |  |
-| 1 | 2 | 553850 | HELLDIVERS™ 2 | 217046 | 19 | 0.225 |  |
-| 1 | 3 | 261550 | Mount & Blade II: Bannerlord | 113493 | 66 | 0.185 |  |
-| 1 | 4 | 582010 | Monster Hunter: World | 113236 | 85 | 0.09 |  |
-| 1 | 5 | 779340 | Total War: THREE KINGDOMS | 102719 | 77 | 0.041 |  |
-| 2 | 1 | 730 | Counter-Strike 2 | 1.11752e+06 | 158 | 0.828 |  |
-| 2 | 2 | 271590 | Grand Theft Auto V Legacy | 145070 | 125 | 0.444 |  |
-| 2 | 3 | 252490 | Rust | 142117 | 141 | 0.682 |  |
-| 2 | 4 | 105600 | Terraria | 129809 | 158 | 0.193 |  |
-| 2 | 5 | 413150 | Stardew Valley | 120134 | 117 | 0.606 |  |
+| 0 | 1 | 671860 | BattleBit Remastered | 45198 | 36 | 0.012 | 2023 |
+| 0 | 2 | 323190 | Frostpunk | 19478 | 97 | 0.088 | 2018 |
+| 0 | 3 | 668580 | Atomic Heart | 18457 | 33 | 0.035 | 2023 |
+| 0 | 4 | 351940 | The Descendant | 10282 | 115 | 0.001 | 2016 |
+| 0 | 5 | 343710 | Kholat | 5044 | 123 | 0.001 | 2015 |
+| 1 | 1 | 578080 | PUBG: BATTLEGROUNDS | 1.58489e+06 | 102 | 0.184 | 2017 |
+| 1 | 2 | 553850 | HELLDIVERS™ 2 | 217046 | 19 | 0.225 | 2024 |
+| 1 | 3 | 261550 | Mount & Blade II: Bannerlord | 113493 | 66 | 0.185 | 2022 |
+| 1 | 4 | 582010 | Monster Hunter: World | 113236 | 85 | 0.09 | 2018 |
+| 1 | 5 | 779340 | Total War: THREE KINGDOMS | 102719 | 77 | 0.041 | 2019 |
+| 2 | 1 | 730 | Counter-Strike 2 | 1.11752e+06 | 158 | 0.828 | 2012 |
+| 2 | 2 | 271590 | Grand Theft Auto V Legacy | 145070 | 125 | 0.444 | 2015 |
+| 2 | 3 | 252490 | Rust | 142117 | 141 | 0.682 | 2018 |
+| 2 | 4 | 105600 | Terraria | 129809 | 158 | 0.193 | 2011 |
+| 2 | 5 | 413150 | Stardew Valley | 120134 | 117 | 0.606 | 2016 |
 
 ## Curva típica: % del pico en meses seleccionados
 
