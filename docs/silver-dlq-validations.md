@@ -8,25 +8,6 @@ incumple una regla no entra a Silver y se escribe en DLQ con un motivo
 explícito. El perfilado de los notebooks de diagnóstico fue la evidencia para fijar el
 contrato.
 
-## Orden de procesamiento
-
-Para cada tabla:
-
-1. leer Bronze hasta el cutoff;
-2. estandarizar nombres y tipos con `try_*`;
-3. evaluar reglas de clave;
-4. separar claves inválidas a DLQ;
-5. deduplicar determinísticamente las filas que pasaron las claves;
-6. marcar las filas superseded como deduplicadas, no como rechazadas;
-7. evaluar reglas de negocio en una sola pasada;
-8. escribir Silver y DLQ de forma idempotente;
-9. verificar la contabilidad.
-
-El orden entre tablas es `steam_games` -> `steam_game_reviews` ->
-`steam_player_counts_monthly` ->
-`twitch_game_activity_monthly`. Esto permite que una política futura de huérfanos
-dependa del catálogo de juegos sin invertir el flujo.
-
 ## Reglas implementadas
 
 ### `silver.steam_games`

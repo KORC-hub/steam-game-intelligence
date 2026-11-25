@@ -199,35 +199,3 @@ SKIPPED T5: run_mutation_tests=false ...
 No se debe declarar la prueba como exitosa únicamente porque el notebook sea
 válido localmente; es necesario conservar la salida de la ejecución de
 Databricks.
-
-## Alcance actual y limitaciones
-
-- La prueba T1 comprueba repetición con el mismo corte y la misma fuente; no
-  comprueba todavía el reemplazo de una fila Bronze por una versión actualizada.
-- T5 está desactivada por defecto y actualmente queda como una prueba opcional
-  pendiente de implementar de forma controlada. Si se activa en la versión
-  actual, el notebook detiene la ejecución con `NotImplementedError` para evitar
-  mutaciones no confirmadas.
-- El notebook actual no automatiza una conciliación completa de entradas,
-  rechazados, deduplicaciones y filas aprobadas. Esa contabilidad debe
-  complementarse si se necesita evidencia detallada de cada etapa.
-- `cleanup_sandbox=false` permite revisar las tablas y el historial después de
-  la prueba. Con `cleanup_sandbox=true` se elimina el catálogo sandbox
-  completo mediante `DROP CATALOG ... CASCADE`.
-- Los cambios en el historial Delta entre ejecuciones son esperables; la
-  condición de idempotencia se evalúa sobre el estado lógico visible, no sobre
-  la igualdad de números de versión Delta.
-
-## Ejecución recomendada
-
-1. Abrir `notebooks/idempotency_tests.ipynb` en Databricks.
-2. Confirmar que `orchestrator_path` apunta a `./silver_orquestator`.
-3. Mantener `run_mutation_tests=false`.
-4. Mantener `cleanup_sandbox=false` y `reset_sandbox_catalog=false` durante la
-   primera validación.
-5. Ejecutar todas las celdas en orden.
-6. Guardar la salida con los mensajes T1–T4 y el historial Delta.
-7. Revisar las tablas sandbox antes de eliminarlas.
-8. Para empezar de cero, ejecutar otra corrida con
-   `reset_sandbox_catalog=true`. Para eliminarlo al finalizar, usar
-   `cleanup_sandbox=true` solo cuando ya no se necesite inspeccionar el sandbox.

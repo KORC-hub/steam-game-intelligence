@@ -24,7 +24,7 @@ def parse_args(argv=None):
     return parser.parse_args(normalized_args)
 
 
-args = parse_args()
+args = parse_args() 
 catalog = args.catalog.strip()
 schema = args.schema.strip()
 table = args.table.strip()

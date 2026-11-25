@@ -355,15 +355,3 @@ se observó en los datos. No demuestran que Twitch cause cambios en Steam.
   No tener el dato no significa tener reseñas negativas.
 - En esta ejecución todos los juegos aparecen como publicados. Por eso esta
   consulta no permitió comparar juegos publicados con juegos aún no publicados.
-
-### Limitaciones e interpretación
-
-Los porcentajes son poco confiables cuando el mes anterior tiene casi cero
-jugadores. En una siguiente versión conviene mostrar también cuántos jugadores
-se ganaron o perdieron en números absolutos y exigir un mínimo de jugadores
-antes de calcular porcentajes.
-
-También faltan datos que pueden explicar los cambios: fecha de lanzamiento,
-promociones, temporadas y actualizaciones. La conclusión de este análisis es
-solamente descriptiva: con los datos disponibles no se observa una relación
-clara entre las horas vistas en Twitch y el crecimiento posterior en Steam.
