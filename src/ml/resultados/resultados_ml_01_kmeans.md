@@ -1,6 +1,6 @@
 # Resultados — Cuaderno ML 1: K-Means de ciclos de vida
 
-- Generado en UTC: 2026-11-25T04:16:40.299395+00:00
+- Generado en UTC: 2026-11-25T04:39:15.741300+00:00
 - Gold: `steam_game_intelligence.gold`
 - Umbrales: min_months=12, min_peak_players=20.0
 - Juegos en el modelo: 4,007 (descartados por nulos: 0)
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | game_growth | 605537 | 6693 |
 | dim_game | 150848 | 150848 |
-| twitch_steam_relationship | 5498 | 552 |
+| twitch_steam_relationship | 9102 | 1191 |
 
 ## Juegos que cumplen cada combinación de umbrales
 
@@ -86,11 +86,11 @@
 
 ## Porcentaje de juegos de cada cluster por género (top 8)
 
-| arquetipo | {"id":"23","description":"Indie"} | {"id":"1","description":"Action"} | {"id":"25","description":"Adventure"} | {"id":"2","description":"Strategy"} | {"id":"3","description":"RPG"} | {"id":"28","description":"Simulation"} | {"id":"4","description":"Casual"} | {"id":"37","description":"Free To Play"} |
+| arquetipo | Indie | Action | Adventure | Strategy | RPG | Simulation | Casual | Free To Play |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cluster 0 | 81.8 | 55.8 | 39.5 | 19 | 17.7 | 12.8 | 44.7 | 4.5 |
+| Cluster 0 | 82.3 | 56.2 | 39.7 | 19 | 17.7 | 12.8 | 45.1 | 4.5 |
 | Cluster 1 | 48.8 | 44.3 | 33.3 | 28.1 | 26.8 | 23.4 | 15.8 | 12.1 |
-| Cluster 2 | 35.9 | 39.8 | 29.6 | 32.2 | 18.7 | 26.7 | 14.5 | 10.3 |
+| Cluster 2 | 35.9 | 39.8 | 29.6 | 32.3 | 18.7 | 26.7 | 14.5 | 10.3 |
 
 ## Juegos de ejemplo por cluster (top 5 por pico)
 
@@ -125,8 +125,8 @@
 | cluster_id | arquetipo | juegos_en_ventana | pct_alguna_vez_top200 | meses_top200_promedio | mediana_horas_vistas_si_aparece | mejor_rank |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0 | Cluster 0 | 468 | 2.6 | 0.05 | 883459 | 29 |
-| 1 | Cluster 1 | 2628 | 13.5 | 0.77 | 920871 | 5 |
-| 2 | Cluster 2 | 911 | 19.2 | 3.66 | 2264212 | 2 |
+| 1 | Cluster 1 | 2628 | 13.3 | 0.77 | 947593 | 5 |
+| 2 | Cluster 2 | 911 | 19.1 | 3.8 | 2219697 | 2 |
 
 ## Gráficos guardados en plots/
 
